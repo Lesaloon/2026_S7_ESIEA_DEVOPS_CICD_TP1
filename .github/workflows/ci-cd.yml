@@ -69,9 +69,15 @@ jobs:
           echo -n "$MYSQL_PASSWORD" > secrets/mysql_password.txt
           echo -n "$WORDPRESS_ADMIN_USER" > secrets/wordpress_admin_user.txt
           echo -n "$WORDPRESS_ADMIN_PASSWORD" > secrets/wordpress_admin_password.txt
-          echo "Secrets files created"
+           echo "Secrets files created"
 
-      # Étape 3 : démarrage des conteneurs
+       # Étape 2.7 : nettoyer les volumes existants
+       - name: Clean up existing volumes and containers
+         run: |
+           docker-compose down -v 2>/dev/null || true
+           echo "✓ Cleaned up existing containers and volumes"
+
+       # Étape 3 : démarrage des conteneurs
       - name: Start containers with docker-compose up
         run: |
           docker-compose up -d
