@@ -60,15 +60,7 @@ services:
 
 volumes:
   mysql_data:
-    driver_opts:
-      type: none
-      o: bind
-      device: ./data/mysql
   wordpress_data:
-    driver_opts:
-      type: none
-      o: bind
-      device: ./data/wordpress
 
 networks:
   wordpress-net:
