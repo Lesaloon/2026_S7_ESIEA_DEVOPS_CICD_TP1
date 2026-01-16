@@ -43,8 +43,6 @@ services:
       - wordpress_data:/var/www/html
     networks:
       - wordpress-net
-    ports:
-      - "8080:80"
     depends_on:
       - mysql
     deploy:
