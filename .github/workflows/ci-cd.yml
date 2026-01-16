@@ -166,7 +166,34 @@ jobs:
                   mkdir -p k8s
                   kompose convert -f docker-compose.yml -o k8s/
 
-            # Étape 4 : upload des manifests comme artefacts
+            # Étape 4 : création du manifest Kubernetes Secret pour MySQL
+            - name: Create Kubernetes Secret manifest
+              env:
+                MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
+                MYSQL_DATABASE: ${{ secrets.MYSQL_DATABASE }}
+                MYSQL_USER: ${{ secrets.MYSQL_USER }}
+                MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+              run: |
+                  # Encode secrets to base64
+                  ROOT_PASS_B64=$(echo -n "$MYSQL_ROOT_PASSWORD" | base64)
+                  DB_NAME_B64=$(echo -n "$MYSQL_DATABASE" | base64)
+                  DB_USER_B64=$(echo -n "$MYSQL_USER" | base64)
+                  DB_PASS_B64=$(echo -n "$MYSQL_PASSWORD" | base64)
+                  
+                  cat > k8s/mysql-secret.yaml << EOF
+                  apiVersion: v1
+                  kind: Secret
+                  metadata:
+                    name: mysql-secret
+                  type: Opaque
+                  data:
+                    MYSQL_ROOT_PASSWORD: $ROOT_PASS_B64
+                    MYSQL_DATABASE: $DB_NAME_B64
+                    MYSQL_USER: $DB_USER_B64
+                    MYSQL_PASSWORD: $DB_PASS_B64
+                  EOF
+
+            # Étape 5 : upload des manifests comme artefacts
             - name: Upload manifests as artifacts
               uses: actions/upload-artifact@v4
               with:
