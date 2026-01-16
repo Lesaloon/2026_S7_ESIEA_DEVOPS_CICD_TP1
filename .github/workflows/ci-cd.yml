@@ -22,7 +22,13 @@ jobs:
             - name: Checkout code
               uses: actions/checkout@v4
 
-            # Étape 2 : validation de la syntaxe docker-compose
+            # Étape 2 : installation de Docker Compose
+            - name: Install Docker Compose
+              run: |
+                  sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+                  sudo chmod +x /usr/local/bin/docker-compose
+
+            # Étape 3 : validation de la syntaxe docker-compose
             - name: Validate docker-compose syntax
               run: |
                   docker-compose config -q
