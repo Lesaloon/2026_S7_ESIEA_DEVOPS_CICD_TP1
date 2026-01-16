@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   mysql:
@@ -15,8 +15,19 @@ services:
       - mysql_password
     volumes:
       - mysql_data:/var/lib/mysql
+    ports:
+      - "3306:3306"
     networks:
       - wordpress-net
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
 
   wordpress:
     image: wordpress:6.5.3-php8.2-apache
@@ -31,12 +42,31 @@ services:
       - wordpress_data:/var/www/html
     networks:
       - wordpress-net
+    ports:
+      - "8080:80"
     depends_on:
       - mysql
+    deploy:
+      replicas: 4
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
 
 volumes:
   mysql_data:
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/mysql
   wordpress_data:
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/wordpress
 
 networks:
   wordpress-net:

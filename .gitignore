@@ -1,0 +1,48 @@
+# Sensitive files
+secrets/
+.env
+.env.local
+.env.*.local
+
+# Generated files
+k8s/
+*.zip
+
+# Docker
+docker-compose.override.yml
+.docker/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Node/npm (if needed)
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Python (if needed)
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+
+# Build artifacts
+dist/
+build/
+*.tar.gz
+CarvilleGuillian/
+CarvilleGuillianWordpress.zip
+
+# Logs
+*.log
+logs/
+
+# OS files
+Thumbs.db
+.DS_Store
