@@ -5,6 +5,7 @@ A production-ready CI/CD pipeline that automates the deployment of WordPress and
 ## 📋 Project Overview
 
 This project implements a complete CI/CD pipeline that:
+
 - Validates Docker Compose configuration
 - Performs health checks on containerized services
 - Converts services to Kubernetes manifests with enhanced features
@@ -15,12 +16,13 @@ This project implements a complete CI/CD pipeline that:
 
 ### Deployment Configuration
 
-| Service | Image | Replicas | Storage | CPU | Memory |
-|---------|-------|----------|---------|-----|--------|
-| **WordPress** | wordpress:6.5.3-php8.2-apache | 4 | 5Gi | 250m-500m | 256Mi-512Mi |
-| **MySQL** | mysql:5.6 | 1 | 5Gi | 250m-500m | 256Mi-512Mi |
+| Service       | Image                         | Replicas | Storage | CPU       | Memory      |
+| ------------- | ----------------------------- | -------- | ------- | --------- | ----------- |
+| **WordPress** | wordpress:6.5.3-php8.2-apache | 4        | 5Gi     | 250m-500m | 256Mi-512Mi |
+| **MySQL**     | mysql:5.6                     | 1        | 5Gi     | 250m-500m | 256Mi-512Mi |
 
 ### Network & Storage
+
 - **Networking**: Internal bridge network with service discovery
 - **Storage**: Persistent volumes for data durability
   - MySQL: 5Gi ReadWriteOnce (RWO)
@@ -32,11 +34,13 @@ This project implements a complete CI/CD pipeline that:
 The pipeline consists of 4 sequential jobs:
 
 ### Job 1: Validate Docker Compose
+
 - **Description**: Validates syntax and structure of `docker-compose.yml`
 - **Command**: `docker-compose config -q`
 - **Trigger**: Every commit and pull request
 
 ### Job 2: Health Check
+
 - **Description**: Starts containers and verifies they are healthy
 - **Steps**:
   1. Creates secret files from GitHub Secrets
@@ -47,6 +51,7 @@ The pipeline consists of 4 sequential jobs:
 - **Timeout**: 60 seconds (max 30 attempts with 2-second intervals)
 
 ### Job 3: Prepare Kubernetes Manifests
+
 - **Description**: Generates Kubernetes manifests from templates with health probes
 - **Steps**:
   1. Copies custom K8s templates with health probes
@@ -59,6 +64,7 @@ The pipeline consists of 4 sequential jobs:
   - Pod anti-affinity for high availability
 
 ### Job 4: Package and Upload to FTP
+
 - **Description**: Packages manifests and uploads to FTP server
 - **Steps**:
   1. Downloads generated manifests
@@ -72,6 +78,7 @@ The pipeline consists of 4 sequential jobs:
 You must configure the following secrets in your GitHub repository settings:
 
 ### FTP Credentials (3 secrets)
+
 ```bash
 # Replace with your FTP credentials
 gh secret set FTP_HOST --body "ftp.cluster114.hosting.ovh.net"
@@ -80,6 +87,7 @@ gh secret set FTP_PASSWORD --body "your_ftp_password"
 ```
 
 ### MySQL Credentials (4 secrets)
+
 ```bash
 # Replace with secure values
 gh secret set MYSQL_ROOT_PASSWORD --body "YourSecureRootPassword123!"
@@ -89,6 +97,7 @@ gh secret set MYSQL_PASSWORD --body "YourSecureDBPassword456!"
 ```
 
 ### Verify Secrets
+
 ```bash
 gh secret list
 ```
@@ -114,15 +123,18 @@ CarvilleGuillian/
 ## 🚀 Deployment Instructions
 
 ### 1. Clone Repository
+
 ```bash
 git clone <repository-url>
 cd 2026_S7_ESIEA_DEVOPS_CICD_TP1
 ```
 
 ### 2. Configure GitHub Secrets
+
 See [GitHub Secrets Configuration](#-github-secrets-configuration) above
 
 ### 3. Deploy to Kubernetes
+
 ```bash
 # Download the generated zip from FTP server
 # Extract manifests
@@ -145,6 +157,7 @@ kubectl get svc
 ```
 
 ### 4. Verify Deployment
+
 ```bash
 # Check pod status
 kubectl get pods -o wide
@@ -162,12 +175,13 @@ kubectl logs deployment/wordpress
 ## 🔍 Health Probes Details
 
 ### MySQL Health Checks
+
 - **Liveness Probe**: `mysqladmin ping` command
   - Initial delay: 30 seconds
   - Period: 10 seconds
   - Timeout: 5 seconds
   - Failure threshold: 3 consecutive failures
-  
+
 - **Readiness Probe**: MySQL query execution
   - Initial delay: 20 seconds
   - Period: 5 seconds
@@ -175,12 +189,13 @@ kubectl logs deployment/wordpress
   - Failure threshold: 2 consecutive failures
 
 ### WordPress Health Checks
+
 - **Liveness Probe**: HTTP GET to `/` (root)
   - Initial delay: 40 seconds
   - Period: 15 seconds
   - Timeout: 5 seconds
   - Failure threshold: 3 consecutive failures
-  
+
 - **Readiness Probe**: HTTP GET to `/wp-login.php`
   - Initial delay: 20 seconds
   - Period: 5 seconds
@@ -208,10 +223,12 @@ Secret files are created at runtime from GitHub Secrets and mounted at `/run/sec
 ## 🔄 How to Trigger the Pipeline
 
 ### Automatic Triggers
+
 - Push to `main` branch
 - Pull request to `main` branch
 
 ### Manual Trigger via Git
+
 ```bash
 # Make changes to docker-compose.yml or other files
 git add .
@@ -220,6 +237,7 @@ git push origin main
 ```
 
 ### View Pipeline Status
+
 ```bash
 # List recent workflow runs
 gh run list --limit 5
@@ -256,20 +274,24 @@ gh run watch <run-id>
 ## 🛠️ Troubleshooting
 
 ### Pipeline Fails on Docker Compose Validation
+
 - Check YAML syntax in `docker-compose.yml`
 - Run locally: `docker-compose config -q`
 
 ### Health Check Fails
+
 - Verify GitHub Secrets are set correctly
 - Check container logs in workflow output
 - Ensure Docker is available on the runner
 
 ### Manifest Generation Issues
+
 - Verify YAML templates in `k8s-templates/` directory
 - Check for missing required fields in manifests
 - Validate with: `kubectl apply --dry-run=client -f manifest.yaml`
 
 ### FTP Upload Fails
+
 - Verify FTP credentials in GitHub Secrets
 - Check FTP host is reachable
 - Ensure SSL verification is disabled for self-signed certificates
@@ -278,6 +300,7 @@ gh run watch <run-id>
 ## 📈 Monitoring & Maintenance
 
 ### View Artifact History
+
 ```bash
 # List all artifacts for a run
 gh run list --json artifacts
@@ -287,11 +310,13 @@ gh run download <run-id> -n k8s-manifests
 ```
 
 ### Database Backups
+
 - Automatic daily backups via CronJob at 2 AM UTC
 - Backups stored in 20Gi persistent volume
 - Restore: `mysql < backup.sql`
 
 ### Logs
+
 ```bash
 # View workflow logs
 kubectl logs -f deployment/mysql
@@ -312,22 +337,28 @@ kubectl logs <pod-name> --previous
 ## 📝 Configuration
 
 ### Adjust Replica Count
+
 Edit `k8s-templates/wordpress-deployment.yaml`:
+
 ```yaml
 spec:
-  replicas: 4  # Change this value
+  replicas: 4 # Change this value
 ```
 
 ### Adjust Storage Size
+
 Edit `k8s-templates/persistent-volumes.yaml`:
+
 ```yaml
 resources:
   requests:
-    storage: 5Gi  # Change this value
+    storage: 5Gi # Change this value
 ```
 
 ### Adjust Resource Limits
+
 Edit deployment manifests:
+
 ```yaml
 resources:
   requests:
@@ -357,6 +388,7 @@ resources:
 ## 📞 Support
 
 For issues or questions:
+
 - Check the troubleshooting section
 - Review GitHub Actions logs
 - Verify all GitHub Secrets are configured
