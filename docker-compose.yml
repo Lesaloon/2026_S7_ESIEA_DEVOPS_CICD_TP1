@@ -33,10 +33,12 @@ services:
     image: wordpress:6.5.3-php8.2-apache
     environment:
       WORDPRESS_DB_HOST: mysql
-      WORDPRESS_DB_NAME: wordpress
-      WORDPRESS_DB_USER: wordpressuser
-      WORDPRESS_DB_PASSWORD: WordPr2026#Pass
+      WORDPRESS_DB_NAME_FILE: /run/secrets/mysql_database
+      WORDPRESS_DB_USER_FILE: /run/secrets/mysql_user
+      WORDPRESS_DB_PASSWORD_FILE: /run/secrets/mysql_password
     secrets:
+      - mysql_database
+      - mysql_user
       - mysql_password
       - wordpress_admin_user
       - wordpress_admin_password
