@@ -34,12 +34,121 @@ jobs:
                   docker-compose config -q
 
     # =====================================================
-    # 2. CONVERSION EN MANIFESTS KUBERNETES
+    # 2. HEALTH CHECK - DOCKER COMPOSE UP & CONTAINER HEALTH
+    # =====================================================
+    health-check:
+        name: Health Check - Docker Compose Up
+        runs-on: ubuntu-latest
+        needs: validate-compose
+
+        steps:
+            # Étape 1 : récupération du code source
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            # Étape 2 : installation de Docker Compose
+            - name: Install Docker Compose
+              run: |
+                  sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+                  sudo chmod +x /usr/local/bin/docker-compose
+
+            # Étape 3 : démarrage des conteneurs
+            - name: Start containers with docker-compose up
+              run: |
+                  docker-compose up -d
+                  echo "Containers started, waiting for health..."
+
+            # Étape 4 : vérification de la santé des conteneurs
+            - name: Check container health
+              run: |
+                  set -e
+                  MAX_ATTEMPTS=30
+                  ATTEMPT=0
+                  
+                  echo "Waiting for containers to be healthy..."
+                  
+                  while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+                    ATTEMPT=$((ATTEMPT + 1))
+                    echo "Health check attempt $ATTEMPT/$MAX_ATTEMPTS..."
+                    
+                    # Get all containers
+                    CONTAINERS=$(docker-compose ps -q)
+                    
+                    if [ -z "$CONTAINERS" ]; then
+                      echo "ERROR: No containers found!"
+                      docker-compose ps
+                      exit 1
+                    fi
+                    
+                    # Check status of each container
+                    RUNNING=0
+                    HEALTHY=0
+                    TOTAL=0
+                    
+                    for CONTAINER in $CONTAINERS; do
+                      TOTAL=$((TOTAL + 1))
+                      STATUS=$(docker inspect $CONTAINER --format='{{.State.Status}}')
+                      HEALTH=$(docker inspect $CONTAINER --format='{{.State.Health.Status}}' 2>/dev/null || echo "none")
+                      
+                      echo "  Container: $(docker inspect $CONTAINER --format='{{.Name}}' | sed 's/\///')"
+                      echo "    Status: $STATUS"
+                      echo "    Health: $HEALTH"
+                      
+                      if [ "$STATUS" = "running" ]; then
+                        RUNNING=$((RUNNING + 1))
+                      fi
+                      
+                      if [ "$HEALTH" = "healthy" ] || [ "$HEALTH" = "none" ]; then
+                        HEALTHY=$((HEALTHY + 1))
+                      fi
+                    done
+                    
+                    echo "Progress: $RUNNING/$TOTAL running, $HEALTHY/$TOTAL healthy/no-health"
+                    
+                    if [ $RUNNING -eq $TOTAL ] && [ $HEALTHY -eq $TOTAL ]; then
+                      echo "✓ All containers are up and healthy!"
+                      docker-compose ps
+                      exit 0
+                    fi
+                    
+                    if [ $ATTEMPT -lt $MAX_ATTEMPTS ]; then
+                      echo "Waiting 2 seconds before next check..."
+                      sleep 2
+                    fi
+                  done
+                  
+                  echo "ERROR: Containers did not become healthy within timeout"
+                  echo "Final status:"
+                  docker-compose ps
+                  docker-compose logs
+                  exit 1
+
+            # Étape 5 : affichage des logs
+            - name: Display container logs
+              if: always()
+              run: |
+                  echo "=== Docker Compose Status ==="
+                  docker-compose ps
+                  echo ""
+                  echo "=== MySQL Logs ==="
+                  docker-compose logs mysql || true
+                  echo ""
+                  echo "=== WordPress Logs ==="
+                  docker-compose logs wordpress || true
+
+            # Étape 6 : arrêt des conteneurs
+            - name: Cleanup - Stop containers
+              if: always()
+              run: |
+                  docker-compose down
+
+    # =====================================================
+    # 3. CONVERSION EN MANIFESTS KUBERNETES
     # =====================================================
     kompose:
         name: Convert to Kubernetes Manifests
         runs-on: ubuntu-latest
-        needs: validate-compose
+        needs: health-check
 
         steps:
             # Étape 1 : récupération du code source
@@ -67,7 +176,7 @@ jobs:
                   path: k8s/
 
     # =====================================================
-    # 3. PACKAGING ET UPLOAD FTP
+    # 4. PACKAGING ET UPLOAD FTP
     # =====================================================
     package-and-upload:
         name: Package and Upload to FTP
