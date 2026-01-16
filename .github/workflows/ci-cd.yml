@@ -57,7 +57,7 @@ jobs:
             - name: Convert docker-compose to Kubernetes manifests
               run: |
                   mkdir -p k8s
-                  kompose convert -f docker-compose.yml -o k8s/ --out-format yaml
+                  kompose convert -f docker-compose.yml -o k8s/
 
             # Étape 4 : upload des manifests comme artefacts
             - name: Upload manifests as artifacts
