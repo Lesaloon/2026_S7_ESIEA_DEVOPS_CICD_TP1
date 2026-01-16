@@ -3,245 +3,275 @@ name: Data CI/CD Pipeline
 
 # Déclencheurs du pipeline
 on:
-    # Le pipeline s'exécute à chaque Pull Request
-    pull_request:
-    # Le pipeline s'exécute aussi à chaque push sur la branche main
-    push:
-        branches: [main]
+  # Le pipeline s'exécute à chaque Pull Request
+  pull_request:
+  # Le pipeline s'exécute aussi à chaque push sur la branche main
+  push:
+    branches: [main]
 
 jobs:
-    # =====================================================
-    # 1. VALIDATION DU DOCKER-COMPOSE
-    # =====================================================
-    validate-compose:
-        name: Validate Docker Compose
-        runs-on: ubuntu-latest
+  # =====================================================
+  # 1. VALIDATION DU DOCKER-COMPOSE
+  # =====================================================
+  validate-compose:
+    name: Validate Docker Compose
+    runs-on: ubuntu-latest
 
-        steps:
-            # Étape 1 : récupération du code source
-            - name: Checkout code
-              uses: actions/checkout@v4
+    steps:
+      # Étape 1 : récupération du code source
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-            # Étape 2 : installation de Docker Compose
-            - name: Install Docker Compose
-              run: |
-                  sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-                  sudo chmod +x /usr/local/bin/docker-compose
+      # Étape 2 : installation de Docker Compose
+      - name: Install Docker Compose
+        run: |
+          sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+          sudo chmod +x /usr/local/bin/docker-compose
 
-            # Étape 3 : validation de la syntaxe docker-compose
-            - name: Validate docker-compose syntax
-              run: |
-                  docker-compose config -q
+      # Étape 3 : validation de la syntaxe docker-compose
+      - name: Validate docker-compose syntax
+        run: |
+          docker-compose config -q
 
-    # =====================================================
-    # 2. HEALTH CHECK - DOCKER COMPOSE UP & CONTAINER HEALTH
-    # =====================================================
-    health-check:
-        name: Health Check - Docker Compose Up
-        runs-on: ubuntu-latest
-        needs: validate-compose
+  # =====================================================
+  # 2. HEALTH CHECK - DOCKER COMPOSE UP & CONTAINER HEALTH
+  # =====================================================
+  health-check:
+    name: Health Check - Docker Compose Up
+    runs-on: ubuntu-latest
+    needs: validate-compose
 
-        steps:
-            # Étape 1 : récupération du code source
-            - name: Checkout code
-              uses: actions/checkout@v4
+    steps:
+      # Étape 1 : récupération du code source
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-            # Étape 2 : installation de Docker Compose
-            - name: Install Docker Compose
-              run: |
-                  sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-                  sudo chmod +x /usr/local/bin/docker-compose
+      # Étape 2 : installation de Docker Compose
+      - name: Install Docker Compose
+        run: |
+          sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+          sudo chmod +x /usr/local/bin/docker-compose
 
-            # Étape 3 : démarrage des conteneurs
-            - name: Start containers with docker-compose up
-              run: |
-                  docker-compose up -d
-                  echo "Containers started, waiting for health..."
+      # Étape 2.5 : créer les fichiers secrets
+      - name: Create secrets directory and files
+        env:
+          MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
+          MYSQL_DATABASE: ${{ secrets.MYSQL_DATABASE }}
+          MYSQL_USER: ${{ secrets.MYSQL_USER }}
+          MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+        run: |
+          mkdir -p secrets
+          echo -n "$MYSQL_ROOT_PASSWORD" > secrets/mysql_root_password.txt
+          echo -n "$MYSQL_DATABASE" > secrets/mysql_database.txt
+          echo -n "$MYSQL_USER" > secrets/mysql_user.txt
+          echo -n "$MYSQL_PASSWORD" > secrets/mysql_password.txt
+          echo "Secrets files created"
 
-            # Étape 4 : vérification de la santé des conteneurs
-            - name: Check container health
-              run: |
-                  set -e
-                  MAX_ATTEMPTS=30
-                  ATTEMPT=0
-                  
-                  echo "Waiting for containers to be healthy..."
-                  
-                  while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
-                    ATTEMPT=$((ATTEMPT + 1))
-                    echo "Health check attempt $ATTEMPT/$MAX_ATTEMPTS..."
-                    
-                    # Get all containers
-                    CONTAINERS=$(docker-compose ps -q)
-                    
-                    if [ -z "$CONTAINERS" ]; then
-                      echo "ERROR: No containers found!"
-                      docker-compose ps
-                      exit 1
-                    fi
-                    
-                    # Check status of each container
-                    RUNNING=0
-                    TOTAL=0
-                    
-                    for CONTAINER in $CONTAINERS; do
-                      TOTAL=$((TOTAL + 1))
-                      STATUS=$(docker inspect $CONTAINER --format='{{.State.Status}}')
-                      HEALTH=$(docker inspect $CONTAINER --format='{{.State.Health.Status}}' 2>/dev/null || echo "")
-                      
-                      CONTAINER_NAME=$(docker inspect $CONTAINER --format='{{.Name}}' | sed 's/\///')
-                      echo "  Container: $CONTAINER_NAME"
-                      echo "    Status: $STATUS"
-                      if [ -n "$HEALTH" ]; then
-                        echo "    Health: $HEALTH"
-                      fi
-                      
-                      if [ "$STATUS" = "running" ]; then
-                        RUNNING=$((RUNNING + 1))
-                      fi
-                    done
-                    
-                    echo "Progress: $RUNNING/$TOTAL running"
-                    
-                    if [ $RUNNING -eq $TOTAL ]; then
-                      echo "✓ All containers are up and running!"
-                      docker-compose ps
-                      exit 0
-                    fi
-                    
-                    if [ $ATTEMPT -lt $MAX_ATTEMPTS ]; then
-                      echo "Waiting 2 seconds before next check..."
-                      sleep 2
-                    fi
-                  done
-                  
-                  echo "ERROR: Containers did not start within timeout"
-                  echo "Final status:"
-                  docker-compose ps
-                  docker-compose logs
-                  exit 1
+      # Étape 3 : démarrage des conteneurs
+      - name: Start containers with docker-compose up
+        run: |
+          docker-compose up -d
+          echo "Containers started, waiting for health..."
 
-            # Étape 5 : affichage des logs
-            - name: Display container logs
-              if: always()
-              run: |
-                  echo "=== Docker Compose Status ==="
-                  docker-compose ps
-                  echo ""
-                  echo "=== MySQL Logs ==="
-                  docker-compose logs mysql || true
-                  echo ""
-                  echo "=== WordPress Logs ==="
-                  docker-compose logs wordpress || true
+      # Étape 4 : vérification de la santé des conteneurs
+      - name: Check container health
+        run: |
+          set -e
+          MAX_ATTEMPTS=30
+          ATTEMPT=0
 
-            # Étape 6 : arrêt des conteneurs
-            - name: Cleanup - Stop containers
-              if: always()
-              run: |
-                  docker-compose down
+          echo "Waiting for containers to be healthy..."
 
-    # =====================================================
-    # 3. CONVERSION EN MANIFESTS KUBERNETES
-    # =====================================================
-    kompose:
-        name: Convert to Kubernetes Manifests
-        runs-on: ubuntu-latest
-        needs: health-check
+          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+            ATTEMPT=$((ATTEMPT + 1))
+            echo "Health check attempt $ATTEMPT/$MAX_ATTEMPTS..."
+            
+            # Get all containers
+            CONTAINERS=$(docker-compose ps -q)
+            
+            if [ -z "$CONTAINERS" ]; then
+              echo "ERROR: No containers found!"
+              docker-compose ps
+              exit 1
+            fi
+            
+            # Check status of each container
+            RUNNING=0
+            TOTAL=0
+            
+            for CONTAINER in $CONTAINERS; do
+              TOTAL=$((TOTAL + 1))
+              STATUS=$(docker inspect $CONTAINER --format='{{.State.Status}}')
+              HEALTH=$(docker inspect $CONTAINER --format='{{.State.Health.Status}}' 2>/dev/null || echo "")
+              
+              CONTAINER_NAME=$(docker inspect $CONTAINER --format='{{.Name}}' | sed 's/\///')
+              echo "  Container: $CONTAINER_NAME"
+              echo "    Status: $STATUS"
+              if [ -n "$HEALTH" ]; then
+                echo "    Health: $HEALTH"
+              fi
+              
+              if [ "$STATUS" = "running" ]; then
+                RUNNING=$((RUNNING + 1))
+              fi
+            done
+            
+            echo "Progress: $RUNNING/$TOTAL running"
+            
+            if [ $RUNNING -eq $TOTAL ]; then
+              echo "✓ All containers are up and running!"
+              docker-compose ps
+              exit 0
+            fi
+            
+            if [ $ATTEMPT -lt $MAX_ATTEMPTS ]; then
+              echo "Waiting 2 seconds before next check..."
+              sleep 2
+            fi
+          done
 
-        steps:
-            # Étape 1 : récupération du code source
-            - name: Checkout code
-              uses: actions/checkout@v4
+          echo "ERROR: Containers did not start within timeout"
+          echo "Final status:"
+          docker-compose ps
+          docker-compose logs
+          exit 1
 
-            # Étape 2 : installation de kompose
-            - name: Install kompose
-              run: |
-                  curl -L https://github.com/kubernetes/kompose/releases/download/v1.28.0/kompose-linux-amd64 -o kompose
-                  chmod +x kompose
-                  sudo mv kompose /usr/local/bin/
+      # Étape 5 : affichage des logs
+      - name: Display container logs
+        if: always()
+        run: |
+          echo "=== Docker Compose Status ==="
+          docker-compose ps
+          echo ""
+          echo "=== MySQL Logs ==="
+          docker-compose logs mysql || true
+          echo ""
+          echo "=== WordPress Logs ==="
+          docker-compose logs wordpress || true
 
-            # Étape 3 : conversion docker-compose -> kubernetes manifests
-            - name: Convert docker-compose to Kubernetes manifests
-              run: |
-                  mkdir -p k8s
-                  kompose convert -f docker-compose.yml -o k8s/
+      # Étape 6 : arrêt des conteneurs
+      - name: Cleanup - Stop containers
+        if: always()
+        run: |
+          docker-compose down
 
-            # Étape 4 : création du manifest Kubernetes Secret pour MySQL
-            - name: Create Kubernetes Secret manifest
-              env:
-                MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
-                MYSQL_DATABASE: ${{ secrets.MYSQL_DATABASE }}
-                MYSQL_USER: ${{ secrets.MYSQL_USER }}
-                MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
-              run: |
-                  # Encode secrets to base64
-                  ROOT_PASS_B64=$(echo -n "$MYSQL_ROOT_PASSWORD" | base64)
-                  DB_NAME_B64=$(echo -n "$MYSQL_DATABASE" | base64)
-                  DB_USER_B64=$(echo -n "$MYSQL_USER" | base64)
-                  DB_PASS_B64=$(echo -n "$MYSQL_PASSWORD" | base64)
-                  
-                  cat > k8s/mysql-secret.yaml << EOF
-                  apiVersion: v1
-                  kind: Secret
-                  metadata:
-                    name: mysql-secret
-                  type: Opaque
-                  data:
-                    MYSQL_ROOT_PASSWORD: $ROOT_PASS_B64
-                    MYSQL_DATABASE: $DB_NAME_B64
-                    MYSQL_USER: $DB_USER_B64
-                    MYSQL_PASSWORD: $DB_PASS_B64
-                  EOF
+  # =====================================================
+  # 3. CONVERSION EN MANIFESTS KUBERNETES
+  # =====================================================
+  kompose:
+    name: Convert to Kubernetes Manifests
+    runs-on: ubuntu-latest
+    needs: health-check
 
-            # Étape 5 : upload des manifests comme artefacts
-            - name: Upload manifests as artifacts
-              uses: actions/upload-artifact@v4
-              with:
-                  name: k8s-manifests
-                  path: k8s/
+    steps:
+      # Étape 1 : récupération du code source
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    # =====================================================
-    # 4. PACKAGING ET UPLOAD FTP
-    # =====================================================
-    package-and-upload:
-        name: Package and Upload to FTP
-        runs-on: ubuntu-latest
-        needs: kompose
+      # Étape 1.5 : créer les fichiers secrets
+      - name: Create secrets directory and files
+        env:
+          MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
+          MYSQL_DATABASE: ${{ secrets.MYSQL_DATABASE }}
+          MYSQL_USER: ${{ secrets.MYSQL_USER }}
+          MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+        run: |
+          mkdir -p secrets
+          echo -n "$MYSQL_ROOT_PASSWORD" > secrets/mysql_root_password.txt
+          echo -n "$MYSQL_DATABASE" > secrets/mysql_database.txt
+          echo -n "$MYSQL_USER" > secrets/mysql_user.txt
+          echo -n "$MYSQL_PASSWORD" > secrets/mysql_password.txt
+          echo "Secrets files created"
 
-        steps:
-            # Étape 1 : récupération du code source
-            - name: Checkout code
-              uses: actions/checkout@v4
+      # Étape 2 : installation de kompose
+      - name: Install kompose
+        run: |
+          curl -L https://github.com/kubernetes/kompose/releases/download/v1.28.0/kompose-linux-amd64 -o kompose
+          chmod +x kompose
+          sudo mv kompose /usr/local/bin/
 
-            # Étape 2 : téléchargement des manifests
-            - name: Download manifests
-              uses: actions/download-artifact@v4
-              with:
-                  name: k8s-manifests
-                  path: k8s/
+      # Étape 3 : conversion docker-compose -> kubernetes manifests
+      - name: Convert docker-compose to Kubernetes manifests
+        run: |
+          mkdir -p k8s
+          kompose convert -f docker-compose.yml -o k8s/
 
-            # Étape 3 : création de la structure de dossier
-            - name: Create folder structure
-              run: |
-                  mkdir -p CarvilleGuillian
-                  cp k8s/*.yaml CarvilleGuillian/ || true
-                  cp k8s/*.yml CarvilleGuillian/ || true
+      # Étape 4 : création du manifest Kubernetes Secret pour MySQL
+      - name: Create Kubernetes Secret manifest
+        env:
+          MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
+          MYSQL_DATABASE: ${{ secrets.MYSQL_DATABASE }}
+          MYSQL_USER: ${{ secrets.MYSQL_USER }}
+          MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+        run: |
+          # Encode secrets to base64
+          ROOT_PASS_B64=$(echo -n "$MYSQL_ROOT_PASSWORD" | base64)
+          DB_NAME_B64=$(echo -n "$MYSQL_DATABASE" | base64)
+          DB_USER_B64=$(echo -n "$MYSQL_USER" | base64)
+          DB_PASS_B64=$(echo -n "$MYSQL_PASSWORD" | base64)
 
-            # Étape 4 : création du zip
-            - name: Create zip archive
-              run: |
-                  zip -r CarvilleGuillianWordpress.zip CarvilleGuillian/
+          cat > k8s/mysql-secret.yaml << EOF
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: mysql-secret
+          type: Opaque
+          data:
+            MYSQL_ROOT_PASSWORD: $ROOT_PASS_B64
+            MYSQL_DATABASE: $DB_NAME_B64
+            MYSQL_USER: $DB_USER_B64
+            MYSQL_PASSWORD: $DB_PASS_B64
+          EOF
 
-            # Étape 5 : upload sur FTP
-            - name: Upload to FTP
-              run: |
-                  set -e
-                  sudo apt-get update -qq
-                  sudo apt-get install -y lftp
-                  lftp -u ${{ secrets.FTP_USER }},${{ secrets.FTP_PASSWORD }} ${{ secrets.FTP_HOST }} << EOF
-                  set ssl:verify-certificate no
-                  mkdir -p RenduDevopsKube 2>/dev/null || true
-                  cd RenduDevopsKube
-                  put CarvilleGuillianWordpress.zip
-                  quit
-                  EOF
+      # Étape 5 : upload des manifests comme artefacts
+      - name: Upload manifests as artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: k8s-manifests
+          path: k8s/
+
+  # =====================================================
+  # 4. PACKAGING ET UPLOAD FTP
+  # =====================================================
+  package-and-upload:
+    name: Package and Upload to FTP
+    runs-on: ubuntu-latest
+    needs: kompose
+
+    steps:
+      # Étape 1 : récupération du code source
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Étape 2 : téléchargement des manifests
+      - name: Download manifests
+        uses: actions/download-artifact@v4
+        with:
+          name: k8s-manifests
+          path: k8s/
+
+      # Étape 3 : création de la structure de dossier
+      - name: Create folder structure
+        run: |
+          mkdir -p CarvilleGuillian
+          cp k8s/*.yaml CarvilleGuillian/ || true
+          cp k8s/*.yml CarvilleGuillian/ || true
+
+      # Étape 4 : création du zip
+      - name: Create zip archive
+        run: |
+          zip -r CarvilleGuillianWordpress.zip CarvilleGuillian/
+
+      # Étape 5 : upload sur FTP
+      - name: Upload to FTP
+        run: |
+          set -e
+          sudo apt-get update -qq
+          sudo apt-get install -y lftp
+          lftp -u ${{ secrets.FTP_USER }},${{ secrets.FTP_PASSWORD }} ${{ secrets.FTP_HOST }} << EOF
+          set ssl:verify-certificate no
+          mkdir -p RenduDevopsKube 2>/dev/null || true
+          cd RenduDevopsKube
+          put CarvilleGuillianWordpress.zip
+          quit
+          EOF

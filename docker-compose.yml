@@ -4,10 +4,15 @@ services:
   mysql:
     image: mysql:5.6
     environment:
-      MYSQL_ROOT_PASSWORD: WpSecure2026!Rand#K8s
-      MYSQL_DATABASE: wordpress
-      MYSQL_USER: wordpressuser
-      MYSQL_PASSWORD: WordPr2026#Pass
+      MYSQL_ROOT_PASSWORD_FILE: /run/secrets/mysql_root_password
+      MYSQL_DATABASE_FILE: /run/secrets/mysql_database
+      MYSQL_USER_FILE: /run/secrets/mysql_user
+      MYSQL_PASSWORD_FILE: /run/secrets/mysql_password
+    secrets:
+      - mysql_root_password
+      - mysql_database
+      - mysql_user
+      - mysql_password
     volumes:
       - mysql_data:/var/lib/mysql
     networks:
@@ -20,6 +25,8 @@ services:
       WORDPRESS_DB_NAME: wordpress
       WORDPRESS_DB_USER: wordpressuser
       WORDPRESS_DB_PASSWORD: WordPr2026#Pass
+    secrets:
+      - mysql_password
     volumes:
       - wordpress_data:/var/www/html
     networks:
@@ -34,3 +41,13 @@ volumes:
 networks:
   wordpress-net:
     driver: bridge
+
+secrets:
+  mysql_root_password:
+    file: ./secrets/mysql_root_password.txt
+  mysql_database:
+    file: ./secrets/mysql_database.txt
+  mysql_user:
+    file: ./secrets/mysql_user.txt
+  mysql_password:
+    file: ./secrets/mysql_password.txt
