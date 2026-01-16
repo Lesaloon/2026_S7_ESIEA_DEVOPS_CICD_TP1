@@ -52,24 +52,24 @@ jobs:
           sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
           sudo chmod +x /usr/local/bin/docker-compose
 
-       # Étape 2.5 : créer les fichiers secrets
-       - name: Create secrets directory and files
-         env:
-           MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
-           MYSQL_DATABASE: ${{ secrets.MYSQL_DATABASE }}
-           MYSQL_USER: ${{ secrets.MYSQL_USER }}
-           MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
-           WORDPRESS_ADMIN_USER: ${{ secrets.WORDPRESS_ADMIN_USER }}
-           WORDPRESS_ADMIN_PASSWORD: ${{ secrets.WORDPRESS_ADMIN_PASSWORD }}
-         run: |
-           mkdir -p secrets
-           echo -n "$MYSQL_ROOT_PASSWORD" > secrets/mysql_root_password.txt
-           echo -n "$MYSQL_DATABASE" > secrets/mysql_database.txt
-           echo -n "$MYSQL_USER" > secrets/mysql_user.txt
-           echo -n "$MYSQL_PASSWORD" > secrets/mysql_password.txt
-           echo -n "$WORDPRESS_ADMIN_USER" > secrets/wordpress_admin_user.txt
-           echo -n "$WORDPRESS_ADMIN_PASSWORD" > secrets/wordpress_admin_password.txt
-           echo "Secrets files created"
+        # Étape 2.5 : créer les fichiers secrets
+      - name: Create secrets directory and files
+        env:
+          MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
+          MYSQL_DATABASE: ${{ secrets.MYSQL_DATABASE }}
+          MYSQL_USER: ${{ secrets.MYSQL_USER }}
+          MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+          WORDPRESS_ADMIN_USER: ${{ secrets.WORDPRESS_ADMIN_USER }}
+          WORDPRESS_ADMIN_PASSWORD: ${{ secrets.WORDPRESS_ADMIN_PASSWORD }}
+        run: |
+          mkdir -p secrets
+          echo -n "$MYSQL_ROOT_PASSWORD" > secrets/mysql_root_password.txt
+          echo -n "$MYSQL_DATABASE" > secrets/mysql_database.txt
+          echo -n "$MYSQL_USER" > secrets/mysql_user.txt
+          echo -n "$MYSQL_PASSWORD" > secrets/mysql_password.txt
+          echo -n "$WORDPRESS_ADMIN_USER" > secrets/wordpress_admin_user.txt
+          echo -n "$WORDPRESS_ADMIN_PASSWORD" > secrets/wordpress_admin_password.txt
+          echo "Secrets files created"
 
       # Étape 3 : démarrage des conteneurs
       - name: Start containers with docker-compose up
@@ -172,24 +172,24 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-       # Étape 1.5 : créer les fichiers secrets
-       - name: Create secrets directory and files
-         env:
-           MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
-           MYSQL_DATABASE: ${{ secrets.MYSQL_DATABASE }}
-           MYSQL_USER: ${{ secrets.MYSQL_USER }}
-           MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
-           WORDPRESS_ADMIN_USER: ${{ secrets.WORDPRESS_ADMIN_USER }}
-           WORDPRESS_ADMIN_PASSWORD: ${{ secrets.WORDPRESS_ADMIN_PASSWORD }}
-         run: |
-           mkdir -p secrets
-           echo -n "$MYSQL_ROOT_PASSWORD" > secrets/mysql_root_password.txt
-           echo -n "$MYSQL_DATABASE" > secrets/mysql_database.txt
-           echo -n "$MYSQL_USER" > secrets/mysql_user.txt
-           echo -n "$MYSQL_PASSWORD" > secrets/mysql_password.txt
-           echo -n "$WORDPRESS_ADMIN_USER" > secrets/wordpress_admin_user.txt
-           echo -n "$WORDPRESS_ADMIN_PASSWORD" > secrets/wordpress_admin_password.txt
-           echo "Secrets files created"
+        # Étape 1.5 : créer les fichiers secrets
+      - name: Create secrets directory and files
+        env:
+          MYSQL_ROOT_PASSWORD: ${{ secrets.MYSQL_ROOT_PASSWORD }}
+          MYSQL_DATABASE: ${{ secrets.MYSQL_DATABASE }}
+          MYSQL_USER: ${{ secrets.MYSQL_USER }}
+          MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+          WORDPRESS_ADMIN_USER: ${{ secrets.WORDPRESS_ADMIN_USER }}
+          WORDPRESS_ADMIN_PASSWORD: ${{ secrets.WORDPRESS_ADMIN_PASSWORD }}
+        run: |
+          mkdir -p secrets
+          echo -n "$MYSQL_ROOT_PASSWORD" > secrets/mysql_root_password.txt
+          echo -n "$MYSQL_DATABASE" > secrets/mysql_database.txt
+          echo -n "$MYSQL_USER" > secrets/mysql_user.txt
+          echo -n "$MYSQL_PASSWORD" > secrets/mysql_password.txt
+          echo -n "$WORDPRESS_ADMIN_USER" > secrets/wordpress_admin_user.txt
+          echo -n "$WORDPRESS_ADMIN_PASSWORD" > secrets/wordpress_admin_password.txt
+          echo "Secrets files created"
 
       # Étape 2 : installation de kompose
       - name: Install kompose
