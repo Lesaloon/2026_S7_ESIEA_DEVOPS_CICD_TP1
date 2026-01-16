@@ -1,0 +1,106 @@
+# Nom du workflow tel qu'il apparaîtra dans GitHub Actions
+name: Data CI/CD Pipeline
+
+# Déclencheurs du pipeline
+on:
+    # Le pipeline s'exécute à chaque Pull Request
+    pull_request:
+    # Le pipeline s'exécute aussi à chaque push sur la branche main
+    push:
+        branches: [main]
+
+jobs:
+    # =====================================================
+    # 1. VALIDATION DU DOCKER-COMPOSE
+    # =====================================================
+    validate-compose:
+        name: Validate Docker Compose
+        runs-on: ubuntu-latest
+
+        steps:
+            # Étape 1 : récupération du code source
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            # Étape 2 : validation de la syntaxe docker-compose
+            - name: Validate docker-compose syntax
+              run: |
+                  docker-compose config -q
+
+    # =====================================================
+    # 2. CONVERSION EN MANIFESTS KUBERNETES
+    # =====================================================
+    kompose:
+        name: Convert to Kubernetes Manifests
+        runs-on: ubuntu-latest
+        needs: validate-compose
+
+        steps:
+            # Étape 1 : récupération du code source
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            # Étape 2 : installation de kompose
+            - name: Install kompose
+              run: |
+                  curl -L https://github.com/kubernetes/kompose/releases/download/v1.28.0/kompose-linux-amd64 -o kompose
+                  chmod +x kompose
+                  sudo mv kompose /usr/local/bin/
+
+            # Étape 3 : conversion docker-compose -> kubernetes manifests
+            - name: Convert docker-compose to Kubernetes manifests
+              run: |
+                  mkdir -p k8s
+                  kompose convert -f docker-compose.yml -o k8s/ --out-format yaml
+
+            # Étape 4 : upload des manifests comme artefacts
+            - name: Upload manifests as artifacts
+              uses: actions/upload-artifact@v4
+              with:
+                  name: k8s-manifests
+                  path: k8s/
+
+    # =====================================================
+    # 3. PACKAGING ET UPLOAD FTP
+    # =====================================================
+    package-and-upload:
+        name: Package and Upload to FTP
+        runs-on: ubuntu-latest
+        needs: kompose
+
+        steps:
+            # Étape 1 : récupération du code source
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            # Étape 2 : téléchargement des manifests
+            - name: Download manifests
+              uses: actions/download-artifact@v4
+              with:
+                  name: k8s-manifests
+                  path: k8s/
+
+            # Étape 3 : création de la structure de dossier
+            - name: Create folder structure
+              run: |
+                  mkdir -p CarvilleGuillian
+                  cp k8s/*.yml CarvilleGuillian/ || true
+
+            # Étape 4 : création du zip
+            - name: Create zip archive
+              run: |
+                  zip -r CarvilleGuillianWordpress.zip CarvilleGuillian/
+
+            # Étape 5 : upload sur FTP
+            - name: Upload to FTP
+              run: |
+                  set -e
+                  sudo apt-get update -qq
+                  sudo apt-get install -y lftp
+                  lftp -u ${{ secrets.FTP_USER }},${{ secrets.FTP_PASSWORD }} ${{ secrets.FTP_HOST }} << EOF
+                  set ssl:verify-certificate no
+                  mkdir -p RenduDevopsKube
+                  cd RenduDevopsKube
+                  put CarvilleGuillianWordpress.zip
+                  quit
+                  EOF

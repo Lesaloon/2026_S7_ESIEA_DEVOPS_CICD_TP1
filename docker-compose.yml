@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:5.6
+    container_name: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: WpSecure2026!Rand#K8s
+      MYSQL_DATABASE: wordpress
+      MYSQL_USER: wordpressuser
+      MYSQL_PASSWORD: WordPr2026#Pass
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - wordpress-net
+    deploy:
+      replicas: 1
+
+  wordpress:
+    image: wordpress:6.5.3-php8.2-apache
+    container_name: wordpress
+    environment:
+      WORDPRESS_DB_HOST: mysql
+      WORDPRESS_DB_NAME: wordpress
+      WORDPRESS_DB_USER: wordpressuser
+      WORDPRESS_DB_PASSWORD: WordPr2026#Pass
+    volumes:
+      - wordpress_data:/var/www/html
+    networks:
+      - wordpress-net
+    depends_on:
+      - mysql
+    deploy:
+      replicas: 4
+
+volumes:
+  mysql_data:
+    driver: local
+    driver_opts:
+      type: tmpfs
+      device: tmpfs
+      o: size=5g
+  wordpress_data:
+    driver: local
+    driver_opts:
+      type: tmpfs
+      device: tmpfs
+      o: size=10g
+
+networks:
+  wordpress-net:
+    driver: bridge
