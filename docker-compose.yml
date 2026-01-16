@@ -23,11 +23,8 @@ services:
       replicas: 1
       resources:
         limits:
-          cpus: '0.5'
+          cpus: "0.5"
           memory: 512M
-        reservations:
-          cpus: '0.25'
-          memory: 256M
 
   wordpress:
     image: wordpress:6.5.3-php8.2-apache
@@ -47,18 +44,15 @@ services:
     networks:
       - wordpress-net
     ports:
-      - "8080:80"
+      - "80:80"
     depends_on:
       - mysql
     deploy:
       replicas: 4
       resources:
         limits:
-          cpus: '0.5'
+          cpus: "0.5"
           memory: 512M
-        reservations:
-          cpus: '0.25'
-          memory: 256M
 
 volumes:
   mysql_data:
