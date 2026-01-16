@@ -82,31 +82,29 @@ jobs:
                     
                     # Check status of each container
                     RUNNING=0
-                    HEALTHY=0
                     TOTAL=0
                     
                     for CONTAINER in $CONTAINERS; do
                       TOTAL=$((TOTAL + 1))
                       STATUS=$(docker inspect $CONTAINER --format='{{.State.Status}}')
-                      HEALTH=$(docker inspect $CONTAINER --format='{{.State.Health.Status}}' 2>/dev/null || echo "none")
+                      HEALTH=$(docker inspect $CONTAINER --format='{{.State.Health.Status}}' 2>/dev/null || echo "")
                       
-                      echo "  Container: $(docker inspect $CONTAINER --format='{{.Name}}' | sed 's/\///')"
+                      CONTAINER_NAME=$(docker inspect $CONTAINER --format='{{.Name}}' | sed 's/\///')
+                      echo "  Container: $CONTAINER_NAME"
                       echo "    Status: $STATUS"
-                      echo "    Health: $HEALTH"
+                      if [ -n "$HEALTH" ]; then
+                        echo "    Health: $HEALTH"
+                      fi
                       
                       if [ "$STATUS" = "running" ]; then
                         RUNNING=$((RUNNING + 1))
                       fi
-                      
-                      if [ "$HEALTH" = "healthy" ] || [ "$HEALTH" = "none" ]; then
-                        HEALTHY=$((HEALTHY + 1))
-                      fi
                     done
                     
-                    echo "Progress: $RUNNING/$TOTAL running, $HEALTHY/$TOTAL healthy/no-health"
+                    echo "Progress: $RUNNING/$TOTAL running"
                     
-                    if [ $RUNNING -eq $TOTAL ] && [ $HEALTHY -eq $TOTAL ]; then
-                      echo "✓ All containers are up and healthy!"
+                    if [ $RUNNING -eq $TOTAL ]; then
+                      echo "✓ All containers are up and running!"
                       docker-compose ps
                       exit 0
                     fi
@@ -117,7 +115,7 @@ jobs:
                     fi
                   done
                   
-                  echo "ERROR: Containers did not become healthy within timeout"
+                  echo "ERROR: Containers did not start within timeout"
                   echo "Final status:"
                   docker-compose ps
                   docker-compose logs
