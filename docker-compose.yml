@@ -38,6 +38,8 @@ services:
       WORDPRESS_DB_PASSWORD: WordPr2026#Pass
     secrets:
       - mysql_password
+      - wordpress_admin_user
+      - wordpress_admin_password
     volumes:
       - wordpress_data:/var/www/html
     networks:
@@ -81,3 +83,7 @@ secrets:
     file: ./secrets/mysql_user.txt
   mysql_password:
     file: ./secrets/mysql_password.txt
+  wordpress_admin_user:
+    file: ./secrets/wordpress_admin_user.txt
+  wordpress_admin_password:
+    file: ./secrets/wordpress_admin_password.txt
