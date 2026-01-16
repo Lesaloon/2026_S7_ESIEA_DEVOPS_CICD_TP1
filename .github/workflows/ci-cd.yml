@@ -90,6 +90,7 @@ jobs:
             - name: Create folder structure
               run: |
                   mkdir -p CarvilleGuillian
+                  cp k8s/*.yaml CarvilleGuillian/ || true
                   cp k8s/*.yml CarvilleGuillian/ || true
 
             # Étape 4 : création du zip
